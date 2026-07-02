@@ -1,33 +1,65 @@
-[![progress-banner](https://backend.codecrafters.io/progress/redis/61c4ee26-1602-408e-96e7-93ce99ec1d9e)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# redjis
 
-This is a starting point for JavaScript solutions to the
-["Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).
+A Redis server implementation in Node.js, built from scratch. Speaks the RESP protocol, supports replication, persistence, pub/sub, streams, sorted sets, geo commands, and transactions.
 
-In this challenge, you'll build a toy Redis clone that's capable of handling
-basic commands like `PING`, `SET` and `GET`. Along the way we'll learn about
-event loops, the Redis protocol and more.
-
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
-
-# Passing the first stage
-
-The entry point for your Redis implementation is in `app/main.js`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+## Run
 
 ```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+node app/main.js [--port 6379] [--dir /path] [--dbfilename dump.rdb] [--replicaof <host> <port>]
 ```
 
-That's all!
+Connect with any standard Redis client or `redis-cli`.
 
-# Stage 2 & beyond
+## Implemented
 
-Note: This section is for stages 2 and beyond.
+**Core**
+- RESP protocol encoding and decoding
+- `PING`, `ECHO`, `INFO`
+- `SET` / `GET` with optional TTL (`PX`, `EX`) and key expiry
+- `KEYS` with pattern matching
+- `TYPE`, `INCR`, `CONFIG GET`
 
-1. Ensure you have `node (21)` installed locally
-1. Run `./your_program.sh` to run your Redis server, which is implemented in
-   `app/main.js`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+**Lists**
+- `RPUSH`, `LPUSH`, `LRANGE`, `LPOP`, `LLEN`
+- `BLPOP` — blocking pop with timeout, unblocks on new push
+
+**Streams**
+- `XADD` with auto-generated stream IDs (`*`, partial IDs)
+- `XRANGE`, `XREAD` — both blocking and non-blocking reads
+
+**Sorted Sets** — backed by a skip list
+- `ZADD`, `ZREM`, `ZRANK`, `ZRANGE`, `ZCARD`, `ZSCORE`
+
+**Geo**
+- `GEOADD`, `GEOPOS`, `GEODIST`, `GEOSEARCH`
+
+**Pub/Sub**
+- `SUBSCRIBE`, `UNSUBSCRIBE`, `PUBLISH`
+- Subscriber mode enforcement — commands outside the allowed set are rejected
+
+**Transactions**
+- `MULTI`, `EXEC`, `DISCARD`
+- Commands queued and executed atomically; errors inside a transaction do not abort the whole batch
+
+**Replication**
+- Master/replica roles via `--replicaof`
+- Handshake via `REPLCONF` and `PSYNC`
+- Command propagation from master to all connected replicas
+- `WAIT` — blocks until N replicas have acknowledged a given offset
+- Replica offset tracking and `REPLCONF GETACK` handling
+
+**Persistence**
+- RDB file parsing on startup — loads keys and TTLs from an existing dump
+
+## Structure
+
+```
+app/
+  main.js              entry point, command dispatch
+  config.js            server config (port, role, dir, replication state)
+  state/store.js       in-memory stores for strings, lists, streams, sorted sets
+  handlers/            per-feature command handlers
+  transcoder/          RESP encoder and decoder
+  data_structures/     skip list, queue
+  utils/               RDB parser, expiry logic, connection helpers
+```
